@@ -4,7 +4,7 @@ class ExportData
 
   def initialize(**options)
     @config = options[:config]
-    @path = "project_exports"
+    @path = "export_data"
     @base_dir = options[:base_dir]
     @data_cols = data_cols
   end

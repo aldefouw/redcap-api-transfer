@@ -18,11 +18,11 @@ class Config
       config_file = File.read(@base_dir + "/config/config.yml")
       @config = YAML.load(config_file)
 
-      @source_url = @config.source_url
-      @source_token = @config.source_token
+      @source_url = @config['source']['url']
+      @source_token = @config['source']['token']
 
-      @destination_url = @config.destination_url
-      @destination_token = @config.destination_token
+      @destination_url = @config['destination']['url']
+      @destination_token = @config['destination']['token']
     else
       throw "Cannot find a config.yml file."
     end
