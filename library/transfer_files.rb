@@ -39,10 +39,10 @@ class TransferFiles
   end
 
   def unique_record_ids
-    @export_data.data_cols.collect { |r| record_id(r)   }.uniq
+    @export_data.data_cols.map { |r| record_id(r)   }.uniq
   end
 
-  def fields(id)
+  def s_fields(id)
     {
         :token => @config.source_token,
         :content => 'record',
@@ -58,25 +58,78 @@ class TransferFiles
     }
   end
 
-  def post_fields(id)
-    fields(id).collect{|k, v| Curl::PostField.content(k.to_s, v)}
+  def source_fields(id)
+    s_fields(id).map{|k, v| Curl::PostField.content(k.to_s, v)}
   end
 
   def get_record(id)
-    Curl::Easy.http_post(@config.source_url, post_fields(id)) do |curl|
+    Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
       success(curl, id)
       redirect(curl, id)
       missing(curl, id)
       failure(curl, id)
+      complete(curl, id)
     end
   end
 
+  def d_fields(source_data)
+    {
+        :token  =>  @config.destination_token,
+        :content => 'record',
+        :format  => 'json',
+        :type    => 'eav',
+        :overwriteBehavior => 'overwrite',
+        :data    => source_data,
+        :returnContent => 'count',
+        :returnFormat => 'json'
+    }
+  end
+
+  def destination_fields(source_data)
+    d_fields(source_data).map{|k, v| Curl::PostField.content(k.to_s, v)}
+  end
+
+  def write_record_to_destination(id, response)
+    fields = {
+        :token => @config.destination_token,
+        :content => 'record',
+        :format => 'json',
+        :type => 'flat',
+        :data => response.body_str,
+    }
+
+    ch = Curl::Easy.http_post('http://localhost:8054/redcap_v7.4.5/api/', fields.collect{|k, v| Curl::PostField.content(k.to_s, v)})
+    puts ch.body_str
+    #
+    #
+    #
+    #
+    # Curl::Easy.http_post(@config.destination_url, destination_fields(response.body_str)) do |curl|
+    #   curl.on_success do |r|
+    #
+    #     binding.pry
+    #
+    #     puts "Successfully created #{id}!".green
+    #   end
+    #   redirect(curl, id)
+    #   missing(curl, id)
+    #   failure(curl, id)
+    #   complete(curl, id)
+    # end
+
+  end
+
   def success(curl, id)
-    curl.on_success { |r| puts "Success for #{id}!".green }
+    curl.on_success do |r|
+      puts "Successfully fetched #{id}!".green
+      write_record_to_destination(id, r)
+    end
   end
 
   def redirect(curl, id)
-    curl.on_redirect { |r| puts "Redirected for #{id}!".red }
+    curl.on_redirect do |r|
+      puts "Redirected for #{id}!".red
+    end
   end
 
   def missing(curl, id)
@@ -85,6 +138,10 @@ class TransferFiles
 
   def failure(curl, id)
     curl.on_failure { |r| puts "Failure for #{id}!".red }
+  end
+
+  def complete(curl, id)
+    curl.on_complete { |r|  }
   end
 
 end
