@@ -92,15 +92,7 @@ class TransferFiles
   end
 
   def write_record_to_destination(id, response)
-    fields = {
-        :token => @config.destination_token,
-        :content => 'record',
-        :format => 'json',
-        :type => 'eav',
-        :data => response.body_str,
-    }
-
-    Curl::Easy.http_post(@config.destination_url, fields.collect{|k, v| Curl::PostField.content(k.to_s, v)}) do |curl|
+    Curl::Easy.http_post(@config.destination_url, destination_fields(response.body_str)) do |curl|
       curl.on_success do |r|
         if r.body_str == '{"count": 1}'
           puts "Successfully created #{id} on destination.".green
