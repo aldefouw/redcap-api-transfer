@@ -17,7 +17,7 @@ class ExportData
     if File.exist? data_file
       CSV.read data_file, :headers => true
     else
-      throw "You need to add a data export file (data.csv) for project ID #{@config.source_project_id} to #{data_file}"
+      throw "You need to add a data export file (data.csv) for project to #{data_file}."
     end
   end
 

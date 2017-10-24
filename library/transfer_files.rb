@@ -1,4 +1,3 @@
-require 'active_support/inflector'
 require 'pry'
 require 'csv'
 require 'watir'
@@ -26,7 +25,7 @@ class TransferFiles
     options = options.merge(config: @config)
 
     puts 'Loading Export Data ... '
-    @export_data = ExportData.new(options)
+    @export_data = ExportData.new(config: @config)
 
   end
 
