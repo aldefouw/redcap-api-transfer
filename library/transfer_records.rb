@@ -16,6 +16,7 @@ require 'uri'
 #Load Config
 require "#{Dir.getwd}/library/config"
 require "#{Dir.getwd}/library/export_data"
+require "#{Dir.getwd}/library/reporting"
 
 class TransferRecords
 
@@ -32,6 +33,9 @@ class TransferRecords
 
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
+
+    puts 'Loading Reporting Options ... '
+    @reporting = Reporting.new(options)
   end
 
   def run
@@ -81,7 +85,7 @@ class TransferRecords
     Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
 
       curl.on_success do |r|
-        puts "Successfully fetched #{id} from source.".green
+        @reporting.info_output "Successfully fetched #{id} from source."
         write_record_to_destination(id, r)
         fetch_field_documents(id)
       end
@@ -116,7 +120,7 @@ class TransferRecords
     Curl::Easy.http_post(@config.source_url, file_fields(id, field, event).collect{|k, v| Curl::PostField.content(k.to_s, v)}) do |curl|
 
       curl.on_success do |r|
-        puts "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source.".green
+        @reporting.info_output "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source."
         File.open(full_file_path(r), 'wb') do|f|
           curl.on_body {|data| f << data; data.size }
         end
@@ -166,9 +170,9 @@ EOF
     resp = http.request(req)
 
     if resp.code == "200"
-      puts "Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination.".green
+      @reporting.info_output"Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination."
     else
-      puts "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination.".red
+      @reporting.error_output"Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination.".red
     end
   end
 
@@ -213,10 +217,10 @@ EOF
     Curl::Easy.http_post(@config.destination_url, destination_fields(response.body_str)) do |curl|
       curl.on_success do |r|
         if r.body_str == '{"count": 1}'
-          puts "Successfully created #{id} on destination.".green
+          @reporting.info_output "Successfully created #{id} on destination."
         else
-          puts "There was a problem with #{id} on destination.  See below:".red
-          puts r.body_str
+          @reporting.error_output "There was a problem with #{id} on destination.  See below:"
+          @reporting.error_output r.body_str
         end
       end
 
@@ -228,15 +232,15 @@ EOF
   end
 
   def redirect(curl, id, location)
-    curl.on_redirect { |r| puts "Redirected for #{id} on #{location}.".red }
+    curl.on_redirect { |r| @reporting.error_output "Redirected for #{id} on #{location}." }
   end
 
   def missing(curl, id, location)
-    curl.on_missing { |r| puts "Missing for #{id} on #{location}.".red }
+    curl.on_missing { |r| @reporting.error_output "Missing for #{id} on #{location}." }
   end
 
   def failure(curl, id, location)
-    curl.on_failure { |r| puts "Failure for #{id} on #{location}.".red }
+    curl.on_failure { |r| @reporting.error_output "Failure for #{id} on #{location}." }
   end
 
   def complete(curl, id, location)
