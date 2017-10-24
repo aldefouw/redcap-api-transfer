@@ -1,6 +1,6 @@
-require "#{Dir.getwd}/library/transfer_files"
+require "#{Dir.getwd}/library/transfer_records"
 
 options = {}
 
-@transfer = TransferFiles.new(options)
+@transfer = TransferRecords.new(options)
 @transfer.run

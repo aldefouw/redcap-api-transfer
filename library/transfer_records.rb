@@ -9,11 +9,15 @@ require 'highline'
 require 'ruby-progressbar'
 require 'curb'
 
+require 'digest/sha1'
+require 'net/http'
+require 'uri'
+
 #Load Config
 require "#{Dir.getwd}/library/config"
 require "#{Dir.getwd}/library/export_data"
 
-class TransferFiles
+class TransferRecords
 
   def initialize(**options)
     @base_dir = Dir.getwd
@@ -27,7 +31,7 @@ class TransferFiles
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
 
-    puts "===================================================================="
+    divider
   end
 
   def run
@@ -64,6 +68,10 @@ class TransferFiles
     s_fields(id).map{|k, v| Curl::PostField.content(k.to_s, v)}
   end
 
+  def divider
+    puts "===================================================================="
+  end
+
   def get_record(id)
     Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
 
@@ -71,7 +79,7 @@ class TransferFiles
         puts "Successfully fetched #{id} from source.".green
         write_record_to_destination(id, r)
         fetch_field_documents(id)
-        puts "===================================================================="
+        divider
       end
 
       redirect(curl, id, 'source')
@@ -96,20 +104,67 @@ class TransferFiles
     response.content_type.split('"')[1]
   end
 
+  def full_file_path(response)
+    "#{@base_dir}/downloaded_files/#{original_file_name(response)}"
+  end
+
   def export_file_from_source(id, field, event)
     Curl::Easy.http_post(@config.source_url, file_fields(id, field, event).collect{|k, v| Curl::PostField.content(k.to_s, v)}) do |curl|
 
       curl.on_success do |r|
-        puts "Successfully fetched source file called #{original_file_name(r)} from #{id}.".green
-        File.open("#{@base_dir}/downloaded_files/#{original_file_name(r)}", 'wb') do|f|
+        puts "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source.".green
+        File.open(full_file_path(r), 'wb') do|f|
           curl.on_body {|data| f << data; data.size }
         end
+
+        import_file_to_destination(r, id, field, event_name(event))
       end
 
       redirect(curl, id, 'source file')
       missing(curl, id, 'source file')
       failure(curl, id, 'source file')
       complete(curl, id, 'source file')
+    end
+  end
+
+  def import_file_fields(id, field, event_name)
+    {
+        :token => @config.destination_token,
+        :content => 'file',
+        :action => 'import',
+        :record => id,
+        :field => field,
+        :event => event_name,
+        :returnFormat => 'json'
+    }
+  end
+
+  def import_file_to_destination(response, id, field, event_name)
+    file = full_file_path(response)
+    boundary = Digest::SHA1.hexdigest(Time.now.usec.to_s)
+
+body = <<-EOF
+--#{boundary}
+Content-Disposition: form-data; name="file"; filename="#{File.basename(file)}"
+Content-Type: application/octet-stream
+
+#{File.read(file)}
+--#{boundary}
+#{import_file_fields(id, field, event_name).collect{|k,v|"Content-Disposition: form-data; name=\"#{k.to_s}\"\n\n#{v}\n--#{boundary}\n"}.join}
+
+EOF
+
+    uri = URI.parse(@config.destination_url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    req = Net::HTTP::Post.new(uri.request_uri)
+    req.body = body
+    req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+    resp = http.request(req)
+
+    if resp.code == "200"
+      puts "Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination.".green
+    else
+      puts "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination.".red
     end
   end
 
@@ -156,10 +211,9 @@ class TransferFiles
         if r.body_str == '{"count": 1}'
           puts "Successfully created #{id} on destination.".green
         else
-          puts "There was a problem with #{id} on destination".red
+          puts "There was a problem with #{id} on destination.  See below:".red
+          puts r.body_str
         end
-        puts r.body_str
-
       end
 
       redirect(curl, id, 'destination')
@@ -167,7 +221,6 @@ class TransferFiles
       failure(curl, id, 'destination')
       complete(curl, id, 'destination')
     end
-
   end
 
   def redirect(curl, id, location)
