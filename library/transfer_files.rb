@@ -27,7 +27,7 @@ class TransferFiles
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
 
-    puts "=================================="
+    puts "===================================================================="
   end
 
   def run
@@ -66,12 +66,71 @@ class TransferFiles
 
   def get_record(id)
     Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
-      success(curl, id)
+
+      curl.on_success do |r|
+        puts "Successfully fetched #{id} from source.".green
+        write_record_to_destination(id, r)
+        fetch_field_documents(id)
+        puts "===================================================================="
+      end
+
       redirect(curl, id, 'source')
       missing(curl, id, 'source')
       failure(curl, id, 'source')
       complete(curl, id, 'source')
     end
+  end
+
+  def file_fields(id, field, event)
+    {
+        :token => @config.source_token,
+        :content => 'file',
+        :action => 'export',
+        :record => id,
+        :field => field,
+        :event => event_name(event)
+    }
+  end
+
+  def original_file_name(response)
+    response.content_type.split('"')[1]
+  end
+
+  def export_file_from_source(id, field, event)
+    Curl::Easy.http_post(@config.source_url, file_fields(id, field, event).collect{|k, v| Curl::PostField.content(k.to_s, v)}) do |curl|
+
+      curl.on_success do |r|
+        puts "Successfully fetched source file called #{original_file_name(r)} from #{id}.".green
+        File.open("#{@base_dir}/downloaded_files/#{original_file_name(r)}", 'wb') do|f|
+          curl.on_body {|data| f << data; data.size }
+        end
+      end
+
+      redirect(curl, id, 'source file')
+      missing(curl, id, 'source file')
+      failure(curl, id, 'source file')
+      complete(curl, id, 'source file')
+    end
+  end
+
+  def fetch_field_documents(id)
+    fields_with_documents(id) if @export_data.uploaded_files.key?(id)
+  end
+
+  def fields_with_documents(id)
+    @export_data.uploaded_files[id].each do |event|
+      event_fields(event).each do |field|
+        export_file_from_source(id, field, event)
+      end
+    end
+  end
+
+  def event_fields(event)
+    event[1][:fields]
+  end
+
+  def event_name(event)
+    event[0]
   end
 
   def d_fields(source_data)
@@ -100,7 +159,7 @@ class TransferFiles
           puts "There was a problem with #{id} on destination".red
         end
         puts r.body_str
-        puts "=================================="
+
       end
 
       redirect(curl, id, 'destination')
@@ -111,17 +170,8 @@ class TransferFiles
 
   end
 
-  def success(curl, id)
-    curl.on_success do |r|
-      puts "Successfully fetched #{id} from source.".green
-      write_record_to_destination(id, r)
-    end
-  end
-
   def redirect(curl, id, location)
-    curl.on_redirect do |r|
-      puts "Redirected for #{id} on #{location}.".red
-    end
+    curl.on_redirect { |r| puts "Redirected for #{id} on #{location}.".red }
   end
 
   def missing(curl, id, location)

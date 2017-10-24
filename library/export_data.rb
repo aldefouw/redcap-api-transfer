@@ -8,7 +8,7 @@ class ExportData
     @path = "export_data"
     @base_dir = options[:base_dir]
     @data_cols = data_cols
-    uploaded_files
+    files
   end
 
   def data_file
@@ -23,7 +23,7 @@ class ExportData
     end
   end
 
-  def uploaded_files
+  def files
     @uploaded_files = {}
     @data_cols.each { |row| row.each { |col| add_field_to_hash(row, col) if doc_exists?(col) } }
   end
