@@ -20,6 +20,8 @@ require "#{Dir.getwd}/library/export_data"
 class TransferRecords
 
   def initialize(**options)
+    @threads = options[:threads] || 8
+
     @base_dir = Dir.getwd
     options = options.merge(base_dir: @base_dir)
 
@@ -30,18 +32,24 @@ class TransferRecords
 
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
-
-    divider
   end
 
   def run
-    unique_record_ids.each { |id| get_record(id) }
+    Parallel.map(sliced_ids){ |chunk| chunk.each { |id| get_record(id) } }
   end
 
   private
 
   def record_id(row)
     row.first[1]
+  end
+
+  def sliced_ids
+    if unique_record_ids.count > @threads
+      unique_record_ids.each_slice(@threads).to_a
+    else
+      [unique_record_ids]
+    end
   end
 
   def unique_record_ids
@@ -68,9 +76,6 @@ class TransferRecords
     s_fields(id).map{|k, v| Curl::PostField.content(k.to_s, v)}
   end
 
-  def divider
-    puts "===================================================================="
-  end
 
   def get_record(id)
     Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
@@ -79,7 +84,6 @@ class TransferRecords
         puts "Successfully fetched #{id} from source.".green
         write_record_to_destination(id, r)
         fetch_field_documents(id)
-        divider
       end
 
       redirect(curl, id, 'source')
