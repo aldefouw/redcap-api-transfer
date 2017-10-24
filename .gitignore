@@ -1,0 +1,4 @@
+downloaded_files/*
+*.idea
+config/*
+data.csv
