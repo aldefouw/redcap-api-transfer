@@ -26,6 +26,8 @@ class TransferFiles
 
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
+
+    puts "=================================="
   end
 
   def run
@@ -47,7 +49,7 @@ class TransferFiles
         :token => @config.source_token,
         :content => 'record',
         :format => 'json',
-        :type => 'raw',
+        :type => 'eav',
         :records => id,
         :rawOrLabel => 'raw',
         :rawOrLabelHeaders => 'raw',
@@ -65,10 +67,10 @@ class TransferFiles
   def get_record(id)
     Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
       success(curl, id)
-      redirect(curl, id)
-      missing(curl, id)
-      failure(curl, id)
-      complete(curl, id)
+      redirect(curl, id, 'source')
+      missing(curl, id, 'source')
+      failure(curl, id, 'source')
+      complete(curl, id, 'source')
     end
   end
 
@@ -94,53 +96,51 @@ class TransferFiles
         :token => @config.destination_token,
         :content => 'record',
         :format => 'json',
-        :type => 'flat',
+        :type => 'eav',
         :data => response.body_str,
     }
 
-    ch = Curl::Easy.http_post('http://localhost:8054/redcap_v7.4.5/api/', fields.collect{|k, v| Curl::PostField.content(k.to_s, v)})
-    puts ch.body_str
-    #
-    #
-    #
-    #
-    # Curl::Easy.http_post(@config.destination_url, destination_fields(response.body_str)) do |curl|
-    #   curl.on_success do |r|
-    #
-    #     binding.pry
-    #
-    #     puts "Successfully created #{id}!".green
-    #   end
-    #   redirect(curl, id)
-    #   missing(curl, id)
-    #   failure(curl, id)
-    #   complete(curl, id)
-    # end
+    Curl::Easy.http_post(@config.destination_url, fields.collect{|k, v| Curl::PostField.content(k.to_s, v)}) do |curl|
+      curl.on_success do |r|
+        if r.body_str == '{"count": 1}'
+          puts "Successfully created #{id} on destination.".green
+        else
+          puts "There was a problem with #{id} on destination".red
+        end
+        puts r.body_str
+        puts "=================================="
+      end
+
+      redirect(curl, id, 'destination')
+      missing(curl, id, 'destination')
+      failure(curl, id, 'destination')
+      complete(curl, id, 'destination')
+    end
 
   end
 
   def success(curl, id)
     curl.on_success do |r|
-      puts "Successfully fetched #{id}!".green
+      puts "Successfully fetched #{id} from source.".green
       write_record_to_destination(id, r)
     end
   end
 
-  def redirect(curl, id)
+  def redirect(curl, id, location)
     curl.on_redirect do |r|
-      puts "Redirected for #{id}!".red
+      puts "Redirected for #{id} on #{location}.".red
     end
   end
 
-  def missing(curl, id)
-    curl.on_missing { |r| puts "Missing for #{id}!".red }
+  def missing(curl, id, location)
+    curl.on_missing { |r| puts "Missing for #{id} on #{location}.".red }
   end
 
-  def failure(curl, id)
-    curl.on_failure { |r| puts "Failure for #{id}!".red }
+  def failure(curl, id, location)
+    curl.on_failure { |r| puts "Failure for #{id} on #{location}.".red }
   end
 
-  def complete(curl, id)
+  def complete(curl, id, location)
     curl.on_complete { |r|  }
   end
 
