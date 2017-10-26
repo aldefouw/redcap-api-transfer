@@ -139,18 +139,18 @@ class TransferRecords
 
   def export_file_from_source(id, field, event)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(file_fields(id, field, event))) do |curl|
-
       curl.on_success do |r|
         @reporting.info_output "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source."
-        File.open(full_file_path(r), 'wb') do|f|
-          curl.on_body {|data| f << data; data.size }
-        end
-
+        write_file_to_local_disk(r, curl)
         import_file_to_destination(r, id, field, event_name(event))
       end
 
       curl_conditions(curl, id, 'source file')
     end
+  end
+
+  def write_file_to_local_disk(response, curl)
+    File.open(full_file_path(response), 'wb') { |f| curl.on_body {|data| f << data; data.size } }
   end
 
   def import_file_to_destination(response, id, field, event_name)
