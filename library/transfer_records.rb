@@ -44,6 +44,75 @@ class TransferRecords
 
   private
 
+  def destination_fields(source_data)
+    {
+        :token  =>  @config.destination_token,
+        :content => 'record',
+        :format  => 'json',
+        :type    => 'eav',
+        :overwriteBehavior => 'overwrite',
+        :data    => source_data,
+        :returnContent => 'count',
+        :returnFormat => 'json'
+    }
+  end
+
+  def source_fields(id)
+    {
+        :token => @config.source_token,
+        :content => 'record',
+        :format => 'json',
+        :type => 'eav',
+        :records => id,
+        :rawOrLabel => 'raw',
+        :rawOrLabelHeaders => 'raw',
+        :exportCheckboxLabel => 'true',
+        :exportSurveyFields => 'true',
+        :exportDataAccessGroups => 'false',
+        :returnFormat => 'json'
+    }
+  end
+
+  def file_fields(id, field, event)
+    {
+        :token => @config.source_token,
+        :content => 'file',
+        :action => 'export',
+        :record => id,
+        :field => field,
+        :event => event_name(event)
+    }
+  end
+
+  def import_file_fields(id, field, event_name)
+    {
+        :token => @config.destination_token,
+        :content => 'file',
+        :action => 'import',
+        :record => id,
+        :field => field,
+        :event => event_name,
+        :returnFormat => 'json'
+    }
+  end
+
+  def map_data_to_post_fields(data)
+    data.map{|k, v| Curl::PostField.content(k.to_s, v)}
+  end
+
+  def get_record(id)
+    Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
+      curl.on_success do |r|
+        @reporting.info_output "Successfully fetched #{id} from source."
+        write_record_to_destination(id, r)
+        fetch_field_documents(id)
+      end
+
+      curl_conditions(curl, id, 'source')
+    end
+  end
+
+
   def record_id(row)
     row.first[1]
   end
@@ -60,54 +129,6 @@ class TransferRecords
     @export_data.data_cols.map { |r| record_id(r)   }.uniq
   end
 
-  def s_fields(id)
-    {
-        :token => @config.source_token,
-        :content => 'record',
-        :format => 'json',
-        :type => 'eav',
-        :records => id,
-        :rawOrLabel => 'raw',
-        :rawOrLabelHeaders => 'raw',
-        :exportCheckboxLabel => 'true',
-        :exportSurveyFields => 'true',
-        :exportDataAccessGroups => 'false',
-        :returnFormat => 'json'
-    }
-  end
-
-  def source_fields(id)
-    s_fields(id).map{|k, v| Curl::PostField.content(k.to_s, v)}
-  end
-
-
-  def get_record(id)
-    Curl::Easy.http_post(@config.source_url, source_fields(id)) do |curl|
-
-      curl.on_success do |r|
-        @reporting.info_output "Successfully fetched #{id} from source."
-        write_record_to_destination(id, r)
-        fetch_field_documents(id)
-      end
-
-      redirect(curl, id, 'source')
-      missing(curl, id, 'source')
-      failure(curl, id, 'source')
-      complete(curl, id, 'source')
-    end
-  end
-
-  def file_fields(id, field, event)
-    {
-        :token => @config.source_token,
-        :content => 'file',
-        :action => 'export',
-        :record => id,
-        :field => field,
-        :event => event_name(event)
-    }
-  end
-
   def original_file_name(response)
     response.content_type.split('"')[1]
   end
@@ -117,7 +138,7 @@ class TransferRecords
   end
 
   def export_file_from_source(id, field, event)
-    Curl::Easy.http_post(@config.source_url, file_fields(id, field, event).collect{|k, v| Curl::PostField.content(k.to_s, v)}) do |curl|
+    Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(file_fields(id, field, event))) do |curl|
 
       curl.on_success do |r|
         @reporting.info_output "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source."
@@ -128,23 +149,8 @@ class TransferRecords
         import_file_to_destination(r, id, field, event_name(event))
       end
 
-      redirect(curl, id, 'source file')
-      missing(curl, id, 'source file')
-      failure(curl, id, 'source file')
-      complete(curl, id, 'source file')
+      curl_conditions(curl, id, 'source file')
     end
-  end
-
-  def import_file_fields(id, field, event_name)
-    {
-        :token => @config.destination_token,
-        :content => 'file',
-        :action => 'import',
-        :record => id,
-        :field => field,
-        :event => event_name,
-        :returnFormat => 'json'
-    }
   end
 
   def import_file_to_destination(response, id, field, event_name)
@@ -196,25 +202,9 @@ EOF
     event[0]
   end
 
-  def d_fields(source_data)
-    {
-        :token  =>  @config.destination_token,
-        :content => 'record',
-        :format  => 'json',
-        :type    => 'eav',
-        :overwriteBehavior => 'overwrite',
-        :data    => source_data,
-        :returnContent => 'count',
-        :returnFormat => 'json'
-    }
-  end
-
-  def destination_fields(source_data)
-    d_fields(source_data).map{|k, v| Curl::PostField.content(k.to_s, v)}
-  end
 
   def write_record_to_destination(id, response)
-    Curl::Easy.http_post(@config.destination_url, destination_fields(response.body_str)) do |curl|
+    Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(response.body_str))) do |curl|
       curl.on_success do |r|
         if r.body_str == '{"count": 1}'
           @reporting.info_output "Successfully created #{id} on destination."
@@ -224,27 +214,15 @@ EOF
         end
       end
 
-      redirect(curl, id, 'destination')
-      missing(curl, id, 'destination')
-      failure(curl, id, 'destination')
-      complete(curl, id, 'destination')
+      curl_conditions(curl, id, 'destination')
     end
   end
 
-  def redirect(curl, id, location)
-    curl.on_redirect { |r| @reporting.error_output "Redirected for #{id} on #{location}." }
-  end
-
-  def missing(curl, id, location)
-    curl.on_missing { |r| @reporting.error_output "Missing for #{id} on #{location}." }
-  end
-
-  def failure(curl, id, location)
-    curl.on_failure { |r| @reporting.error_output "Failure for #{id} on #{location}." }
-  end
-
-  def complete(curl, id, location)
-    curl.on_complete { |r|  }
+  def curl_conditions(curl, id, location)
+    curl.on_redirect { @reporting.error_output "Redirected for #{id} on #{location}." }
+    curl.on_missing { @reporting.error_output "Missing for #{id} on #{location}." }
+    curl.on_failure { @reporting.error_output "Failure for #{id} on #{location}." }
+    curl.on_complete { @reporting.info_output "Completed request for #{id} on #{location}." }
   end
 
 end
