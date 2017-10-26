@@ -21,7 +21,7 @@ require "#{Dir.getwd}/library/reporting"
 class TransferRecords
 
   def initialize(**options)
-    @threads = options[:threads] || 8
+    @processes = options[:processes] || 8
 
     @base_dir = Dir.getwd
     options = options.merge(base_dir: @base_dir)
@@ -49,8 +49,8 @@ class TransferRecords
   end
 
   def sliced_ids
-    if unique_record_ids.count > @threads
-      unique_record_ids.each_slice(@threads).to_a
+    if unique_record_ids.count > @processes
+      unique_record_ids.each_slice(@processes).to_a
     else
       [unique_record_ids]
     end
