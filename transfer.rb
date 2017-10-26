@@ -1,6 +1,6 @@
 require "#{Dir.getwd}/library/transfer_records"
 
-options = { threads: 1 }
+options = { processes: 8 }
 
 @transfer = TransferRecords.new(options)
 @transfer.run
