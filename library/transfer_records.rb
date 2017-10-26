@@ -96,10 +96,6 @@ class TransferRecords
     }
   end
 
-  def map_data_to_post_fields(data)
-    data.map{|k, v| Curl::PostField.content(k.to_s, v)}
-  end
-
   def get_record(id)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
       curl.on_success do |r|
@@ -107,34 +103,8 @@ class TransferRecords
         write_record_to_destination(id, r)
         fetch_field_documents(id)
       end
-
       curl_conditions(curl, id, 'source')
     end
-  end
-
-
-  def record_id(row)
-    row.first[1]
-  end
-
-  def sliced_ids
-    if unique_record_ids.count > @processes
-      unique_record_ids.each_slice(@processes).to_a
-    else
-      [unique_record_ids]
-    end
-  end
-
-  def unique_record_ids
-    @export_data.data_cols.map { |r| record_id(r)   }.uniq
-  end
-
-  def original_file_name(response)
-    response.content_type.split('"')[1]
-  end
-
-  def full_file_path(response)
-    "#{@base_dir}/downloaded_files/#{original_file_name(response)}"
   end
 
   def export_file_from_source(id, field, event)
@@ -144,13 +114,22 @@ class TransferRecords
         write_file_to_local_disk(r, curl)
         import_file_to_destination(r, id, field, event_name(event), full_file_path(r), Digest::SHA1.hexdigest(Time.now.usec.to_s))
       end
-
       curl_conditions(curl, id, 'source file')
     end
   end
 
-  def write_file_to_local_disk(response, curl)
-    File.open(full_file_path(response), 'wb') { |f| curl.on_body {|data| f << data; data.size } }
+  def write_record_to_destination(id, response)
+    Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(response.body_str))) do |curl|
+      curl.on_success do |r|
+        if r.body_str == '{"count": 1}'
+          @reporting.info_output "Successfully created #{id} on destination."
+        else
+          @reporting.error_output "There was a problem with #{id} on destination.  See below:"
+          @reporting.error_output r.body_str
+        end
+      end
+      curl_conditions(curl, id, 'destination')
+    end
   end
 
   def import_file_to_destination(response, id, field, event_name, file, boundary)
@@ -185,16 +164,35 @@ EOF
     @reporting.error_output "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination."
   end
 
-  def fetch_field_documents(id)
-    fields_with_documents(id) if @export_data.uploaded_files.key?(id)
+  def curl_conditions(curl, id, location)
+    curl.on_redirect { @reporting.error_output "Redirected for #{id} on #{location}." }
+    curl.on_missing { @reporting.error_output "Missing for #{id} on #{location}." }
+    curl.on_failure { @reporting.error_output "Failure for #{id} on #{location}." }
+    curl.on_complete { @reporting.info_output "Completed request for #{id} on #{location}." }
   end
 
-  def fields_with_documents(id)
-    @export_data.uploaded_files[id].each do |event|
-      event_fields(event).each do |field|
-        export_file_from_source(id, field, event)
-      end
-    end
+  def write_file_to_local_disk(response, curl)
+    File.open(full_file_path(response), 'wb') { |f| curl.on_body {|data| f << data; data.size } }
+  end
+
+  def sliced_ids
+    unique_record_ids.count > @processes ? sliced_by_processes : single_slice
+  end
+
+  def sliced_by_processes
+    unique_record_ids.each_slice(@processes).to_a
+  end
+
+  def single_slice
+    [unique_record_ids]
+  end
+
+  def unique_record_ids
+    @export_data.data_cols.map { |r| record_id(r)   }.uniq
+  end
+
+  def record_id(row)
+    row.first[1]
   end
 
   def event_fields(event)
@@ -205,27 +203,28 @@ EOF
     event[0]
   end
 
-
-  def write_record_to_destination(id, response)
-    Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(response.body_str))) do |curl|
-      curl.on_success do |r|
-        if r.body_str == '{"count": 1}'
-          @reporting.info_output "Successfully created #{id} on destination."
-        else
-          @reporting.error_output "There was a problem with #{id} on destination.  See below:"
-          @reporting.error_output r.body_str
-        end
-      end
-
-      curl_conditions(curl, id, 'destination')
-    end
+  def map_data_to_post_fields(data)
+    data.map{|k, v| Curl::PostField.content(k.to_s, v)}
   end
 
-  def curl_conditions(curl, id, location)
-    curl.on_redirect { @reporting.error_output "Redirected for #{id} on #{location}." }
-    curl.on_missing { @reporting.error_output "Missing for #{id} on #{location}." }
-    curl.on_failure { @reporting.error_output "Failure for #{id} on #{location}." }
-    curl.on_complete { @reporting.info_output "Completed request for #{id} on #{location}." }
+  def original_file_name(response)
+    response.content_type.split('"')[1]
+  end
+
+  def full_file_path(response)
+    "#{@base_dir}/downloaded_files/#{original_file_name(response)}"
+  end
+
+  def fetch_field_documents(id)
+    fields_with_documents(id) if @export_data.uploaded_files.key?(id)
+  end
+
+  def fields_with_documents(id)
+    @export_data.uploaded_files[id].each { |event| all_event_fields(event, id) }
+  end
+
+  def all_event_fields(event, id)
+    event_fields(event).each { |field| export_file_from_source(id, field, event) }
   end
 
 end
