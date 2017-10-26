@@ -142,7 +142,7 @@ class TransferRecords
       curl.on_success do |r|
         @reporting.info_output "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source."
         write_file_to_local_disk(r, curl)
-        import_file_to_destination(r, id, field, event_name(event))
+        import_file_to_destination(r, id, field, event_name(event), full_file_path(r), Digest::SHA1.hexdigest(Time.now.usec.to_s))
       end
 
       curl_conditions(curl, id, 'source file')
@@ -153,10 +153,7 @@ class TransferRecords
     File.open(full_file_path(response), 'wb') { |f| curl.on_body {|data| f << data; data.size } }
   end
 
-  def import_file_to_destination(response, id, field, event_name)
-    file = full_file_path(response)
-    boundary = Digest::SHA1.hexdigest(Time.now.usec.to_s)
-
+  def import_file_to_destination(response, id, field, event_name, file, boundary)
 body = <<-EOF
 --#{boundary}
 Content-Disposition: form-data; name="file"; filename="#{File.basename(file)}"
@@ -167,19 +164,25 @@ Content-Type: application/octet-stream
 #{import_file_fields(id, field, event_name).collect{|k,v|"Content-Disposition: form-data; name=\"#{k.to_s}\"\n\n#{v}\n--#{boundary}\n"}.join}
 
 EOF
+    resp = upload_request(body, boundary)
+    resp.code == "200" ? uploaded_success(response, id, event_name) : upload_failure(response, id, event_name)
+  end
 
+  def upload_request(body, boundary)
     uri = URI.parse(@config.destination_url)
     http = Net::HTTP.new(uri.host, uri.port)
     req = Net::HTTP::Post.new(uri.request_uri)
     req.body = body
     req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
-    resp = http.request(req)
+    http.request(req)
+  end
 
-    if resp.code == "200"
-      @reporting.info_output"Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination."
-    else
-      @reporting.error_output"Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination.".red
-    end
+  def uploaded_success(response, id, event_name)
+    @reporting.info_output "Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination."
+  end
+
+  def upload_failure(response, id, event_name)
+    @reporting.error_output "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination."
   end
 
   def fetch_field_documents(id)
