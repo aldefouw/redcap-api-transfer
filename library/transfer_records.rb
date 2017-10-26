@@ -21,7 +21,7 @@ require "#{Dir.getwd}/library/reporting"
 class TransferRecords
 
   def initialize(**options)
-    @processes = options[:processes] || 8
+    @threads = options[:threads] || 8
 
     @base_dir = Dir.getwd
     options = options.merge(base_dir: @base_dir)
@@ -39,7 +39,7 @@ class TransferRecords
   end
 
   def run
-    Parallel.map(sliced_ids){ |chunk| chunk.each { |id| get_record(id) } }
+    Parallel.map(sliced_ids, in_threads: @threads){ |chunk| chunk.each { |id| get_record(id) } }
   end
 
   private
@@ -171,16 +171,16 @@ EOF
     curl.on_complete { @reporting.info_output "Completed request for #{id} on #{location}." }
   end
 
-  def write_file_to_local_disk(response, curl)
-    File.open(full_file_path(response), 'wb') { |f| curl.on_body {|data| f << data; data.size } }
+  def write_file_to_local_disk(r, curl)
+    File.open(full_file_path(r), 'wb') { |f| f << curl.body }
   end
 
   def sliced_ids
-    unique_record_ids.count > @processes ? sliced_by_processes : single_slice
+    unique_record_ids.count > @threads ? sliced_by_processes : single_slice
   end
 
   def sliced_by_processes
-    unique_record_ids.each_slice(@processes).to_a
+    unique_record_ids.each_slice(@threads).to_a
   end
 
   def single_slice
