@@ -42,6 +42,17 @@ class TransferRecords
     Parallel.map(sliced_ids, in_processes: @processes){ |chunk| chunk.each { |id| get_record(id) } }
   end
 
+  def get_record(id)
+    Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
+      curl.on_success do |r|
+        @reporting.info_output "Successfully fetched #{id} from source."
+        write_record_to_destination(id, r)
+        fetch_field_documents(id)
+      end
+      curl_conditions(curl, id, 'source')
+    end
+  end
+
   private
 
   def destination_fields(source_data)
@@ -94,17 +105,6 @@ class TransferRecords
         :event => event_name,
         :returnFormat => 'json'
     }
-  end
-
-  def get_record(id)
-    Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
-      curl.on_success do |r|
-        @reporting.info_output "Successfully fetched #{id} from source."
-        write_record_to_destination(id, r)
-        fetch_field_documents(id)
-      end
-      curl_conditions(curl, id, 'source')
-    end
   end
 
   def export_file_from_source(id, field, event)
@@ -165,9 +165,9 @@ EOF
   end
 
   def curl_conditions(curl, id, location)
-    curl.on_redirect { @reporting.error_output "Redirected for #{id} on #{location}." }
-    curl.on_missing { @reporting.error_output "Missing for #{id} on #{location}." }
-    curl.on_failure { @reporting.error_output "Failure for #{id} on #{location}." }
+    curl.on_redirect { |r| @reporting.error_output "Redirected for #{id} on #{location}. Possible reason: #{r.body}" }
+    curl.on_missing { |r| @reporting.error_output "Missing for #{id} on #{location}. Possible reason: #{r.body}" }
+    curl.on_failure { |r| @reporting.error_output "Failure for #{id} on #{location}. Possible reason: #{r.body}" }
     curl.on_complete { @reporting.info_output "Completed request for #{id} on #{location}." }
   end
 
