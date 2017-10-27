@@ -45,7 +45,7 @@ class TransferRecords
   def transfer_record_to_destination(id)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
       curl.on_success do |r|
-        @reporting.info_output "Successfully fetched #{id} from source."
+        transfer_destination_success(id)
         write_record_to_destination(id, r)
         fetch_field_documents(id)
       end
@@ -54,6 +54,10 @@ class TransferRecords
   end
 
   private
+
+  def transfer_destination_success(id)
+    @reporting.info_output "Successfully fetched #{id} from source."
+  end
 
   def destination_fields(source_data)
     {
@@ -110,7 +114,7 @@ class TransferRecords
   def export_file_from_source(id, field, event)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(file_fields(id, field, event))) do |curl|
       curl.on_success do |r|
-        @reporting.info_output "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source."
+        export_file_success_message(id, r, event)
         write_file_to_local_disk(r, curl)
         import_file_to_destination(r, id, field, event_name(event), full_file_path(r), Digest::SHA1.hexdigest(Time.now.usec.to_s))
       end
@@ -118,11 +122,19 @@ class TransferRecords
     end
   end
 
+  def export_file_success_message(id, r, event)
+    @reporting.info_output "Successfully fetched source file called #{original_file_name(r)} from #{id} / #{event_name(event)} source."
+  end
+
   def write_record_to_destination(id, response)
     Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(response.body_str))) do |curl|
-      curl.on_success { |r| r.body_str == '{"count": 1}' ?  write_record_success(id, r) : write_record_failure(id, r) }
+      curl.on_success { |r| write_success?(r) ? write_record_success(id, r) : write_record_failure(id, r) }
       curl_conditions(curl, id, 'destination')
     end
+  end
+
+  def write_success?(r)
+    r.body_str == '{"count": 1}'
   end
 
   def write_record_success(id, r)
@@ -141,10 +153,10 @@ class TransferRecords
 
   def upload_request(boundary, id, field, event_name, file)
     uri = URI.parse(@config.destination_url)
-    http = Net::HTTP.new(uri.host, uri.port)
     req = Net::HTTP::Post.new(uri.request_uri)
     req.body = body(boundary, id, field, event_name, file)
     req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+    http = Net::HTTP.new(uri.host, uri.port)
     http.request(req)
   end
 
@@ -192,7 +204,7 @@ EOF
   end
 
   def unique_record_ids
-    @export_data.data_cols.map { |r| record_id(r)   }.uniq
+    @export_data.data_cols.map { |r| record_id(r) }.uniq
   end
 
   def record_id(row)
