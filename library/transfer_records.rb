@@ -148,7 +148,7 @@ class TransferRecords
 
   def import_file_to_destination(response, id, field, event_name, file)
     resp = upload_request(Digest::SHA1.hexdigest(Time.now.usec.to_s), id, field, event_name, file)
-    upload_success?(resp) ? upload_success_msg(response, id, event_name) : upload_failure_msg(response, id, event_name)
+    upload_success?(resp) ? upload_success_msg(response, id, event_name, resp) : upload_failure_msg(response, id, event_name, resp)
   end
 
   def upload_success?(resp)
@@ -157,11 +157,13 @@ class TransferRecords
 
   def upload_request(boundary, id, field, event_name, file)
     uri = URI.parse(@config.destination_url)
-    req = Net::HTTP::Post.new(uri.request_uri)
-    req.body = body(boundary, id, field, event_name, file)
-    req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.request(req)
+
+    Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == "https") do |http|
+      req = Net::HTTP::Post.new(uri.request_uri)
+      req.body = body(boundary, id, field, event_name, file)
+      req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+      http.request req
+    end
   end
 
   def body(boundary, id, field, event_name, file)
@@ -176,12 +178,16 @@ Content-Type: application/octet-stream
 EOF
   end
 
-  def upload_success_msg(response, id, event_name)
-    @reporting.info_output "Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination."
+  def upload_success_msg(response, id, event_name, resp)
+    if resp.body.include?("Error") || resp.body.include?("ERROR") || resp.body.include?("error")
+      upload_failure_msg(response, id, event_name, resp)
+    else
+      @reporting.info_output "Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination. Response: #{resp.body}"
+    end
   end
 
-  def upload_failure_msg(response, id, event_name)
-    @reporting.error_output "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination."
+  def upload_failure_msg(response, id, event_name, resp)
+    @reporting.error_output "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination.  Possible reason: #{resp.body}"
   end
 
   def curl_conditions(curl, id, location)
