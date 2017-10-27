@@ -39,10 +39,10 @@ class TransferRecords
   end
 
   def run
-    Parallel.map(sliced_ids, in_processes: @processes){ |chunk| chunk.each { |id| get_record(id) } }
+    Parallel.map(sliced_ids, in_processes: @processes){ |chunk| chunk.each { |id| transfer_record_to_destination(id) } }
   end
 
-  def get_record(id)
+  def transfer_record_to_destination(id)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
       curl.on_success do |r|
         @reporting.info_output "Successfully fetched #{id} from source."
@@ -120,20 +120,36 @@ class TransferRecords
 
   def write_record_to_destination(id, response)
     Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(response.body_str))) do |curl|
-      curl.on_success do |r|
-        if r.body_str == '{"count": 1}'
-          @reporting.info_output "Successfully created #{id} on destination."
-        else
-          @reporting.error_output "There was a problem with #{id} on destination.  See below:"
-          @reporting.error_output r.body_str
-        end
-      end
+      curl.on_success { |r| r.body_str == '{"count": 1}' ?  write_record_success(id, r) : write_record_failure(id, r) }
       curl_conditions(curl, id, 'destination')
     end
   end
 
+  def write_record_success(id, r)
+    @reporting.info_output "Successfully created #{id} on destination."
+  end
+
+  def write_record_failure(id, r)
+    @reporting.error_output "There was a problem with #{id} on destination.  See below:"
+    @reporting.error_output r.body_str
+  end
+
   def import_file_to_destination(response, id, field, event_name, file, boundary)
-body = <<-EOF
+    resp = upload_request(boundary, id, field, event_name, file)
+    resp.code == "200" ? uploaded_success(response, id, event_name) : upload_failure(response, id, event_name)
+  end
+
+  def upload_request(boundary, id, field, event_name, file)
+    uri = URI.parse(@config.destination_url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    req = Net::HTTP::Post.new(uri.request_uri)
+    req.body = body(boundary, id, field, event_name, file)
+    req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+    http.request(req)
+  end
+
+  def body(boundary, id, field, event_name, file)
+<<-EOF
 --#{boundary}
 Content-Disposition: form-data; name="file"; filename="#{File.basename(file)}"
 Content-Type: application/octet-stream
@@ -141,19 +157,7 @@ Content-Type: application/octet-stream
 #{File.read(file)}
 --#{boundary}
 #{import_file_fields(id, field, event_name).collect{|k,v|"Content-Disposition: form-data; name=\"#{k.to_s}\"\n\n#{v}\n--#{boundary}\n"}.join}
-
 EOF
-    resp = upload_request(body, boundary)
-    resp.code == "200" ? uploaded_success(response, id, event_name) : upload_failure(response, id, event_name)
-  end
-
-  def upload_request(body, boundary)
-    uri = URI.parse(@config.destination_url)
-    http = Net::HTTP.new(uri.host, uri.port)
-    req = Net::HTTP::Post.new(uri.request_uri)
-    req.body = body
-    req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
-    http.request(req)
   end
 
   def uploaded_success(response, id, event_name)
