@@ -116,7 +116,7 @@ class TransferRecords
       curl.on_success do |r|
         export_file_success_message(id, r, event)
         write_file_to_local_disk(r, curl)
-        import_file_to_destination(r, id, field, event_name(event), full_file_path(r), Digest::SHA1.hexdigest(Time.now.usec.to_s))
+        import_file_to_destination(r, id, field, event_name(event), full_file_path(r))
       end
       curl_conditions(curl, id, 'source file')
     end
@@ -146,8 +146,8 @@ class TransferRecords
     @reporting.error_output r.body_str
   end
 
-  def import_file_to_destination(response, id, field, event_name, file, boundary)
-    resp = upload_request(boundary, id, field, event_name, file)
+  def import_file_to_destination(response, id, field, event_name, file)
+    resp = upload_request(Digest::SHA1.hexdigest(Time.now.usec.to_s), id, field, event_name, file)
     resp.code == "200" ? uploaded_success(response, id, event_name) : upload_failure(response, id, event_name)
   end
 
