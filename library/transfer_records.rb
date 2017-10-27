@@ -148,7 +148,11 @@ class TransferRecords
 
   def import_file_to_destination(response, id, field, event_name, file)
     resp = upload_request(Digest::SHA1.hexdigest(Time.now.usec.to_s), id, field, event_name, file)
-    resp.code == "200" ? uploaded_success(response, id, event_name) : upload_failure(response, id, event_name)
+    upload_success?(resp) ? upload_success_msg(response, id, event_name) : upload_failure_msg(response, id, event_name)
+  end
+
+  def upload_success?(resp)
+    resp.code == "200"
   end
 
   def upload_request(boundary, id, field, event_name, file)
@@ -172,11 +176,11 @@ Content-Type: application/octet-stream
 EOF
   end
 
-  def uploaded_success(response, id, event_name)
+  def upload_success_msg(response, id, event_name)
     @reporting.info_output "Successfully uploaded file #{original_file_name(response)} to #{id} / #{event_name} destination."
   end
 
-  def upload_failure(response, id, event_name)
+  def upload_failure_msg(response, id, event_name)
     @reporting.error_output "Error uploading file #{original_file_name(response)} to #{id} / #{event_name} on destination."
   end
 
