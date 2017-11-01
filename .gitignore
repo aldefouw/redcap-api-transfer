@@ -4,3 +4,6 @@ config/*
 data.csv
 logs/*
 errors/*
+
+all_files.rb
+single_file.rb
