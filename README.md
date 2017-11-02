@@ -99,7 +99,7 @@ To create a gemset, run the following:
 
 To use a gemset, run the following:
 
-    rvm gemset create gemset_name
+    rvm gemset use gemset_name
 
 
 ## Loading Required Libraries
@@ -151,3 +151,16 @@ To transfer entire project, use code like the following in a file called **trans
 To run the file, at the command prompt, type the following and hit enter:
 
     ruby all_records.rb
+
+
+## Run parallel processes
+
+The library uses [Parallel](https://github.com/grosser/parallel) gem to manage parallel processing of the data.  
+
+Increasing the number of simultaneous processes can immenensely speed up the export / import process.
+
+To adjust the number of simlutaneous processes, simply change the value on "processes" attribute.
+
+For instance, if you wanted 6 processes instead of 8:
+
+    @transfer = TransferRecords.new(processes: 6)
