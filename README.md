@@ -2,17 +2,17 @@
 
 This project contains Ruby libraries that aim to make transferring a REDCap project from one server to another as simple as running a single script from command line.
 
-Instructions in this document are written for a Unix-style environment, but the scripts will likely work in a Windows environment as well.
+Instructions in this document are written for a Unix-style environment, but the scripts will likely work in a Windows environment as well (with some appropriate modifications).
 
 The scripts work by directly connecting to the **source REDCap's API** and pushing that data into the **destination REDCap** via API.
 
-**This library will transfer both REDCap data and files.**
+**Please note that this library will transfer both REDCap data and files.**
 
 ## Disclaimer
 
 **Use the library at your own risk.**  
 
-**No warranty against the loss of data as a result of running a script against the provided library.**
+**No warranty against the loss / corruption of data as a result of running a script against the provided library.**
 
 **Testing in development environment prior to running against production is highly recommended.**
 
@@ -20,11 +20,7 @@ The scripts work by directly connecting to the **source REDCap's API** and pushi
 
 There are some things that you will need in both environments in order for this script to work.
 
-* 1\. **Full Data Export** from the **Source REDCap** project on your local machine
-    * Named **data.csv** and placed in the **/export_data/** folder of this repository
-    * Data Export is used to determine what fields need files transferred
-    
-* 2\. Exact structural match of **Source REDCap project** on **Destination REDCap server**
+* 1\. Exact structural match of **Source REDCap project** on **Destination REDCap server**
     * Structural components for project are downloadable / uploadable on recent versions of REDCap
     * For standard projects:
         * Identical  **Data Dictionary** on both servers
@@ -34,7 +30,7 @@ There are some things that you will need in both environments in order for this 
         * Identical **Instrument Designations** on both servers
     
 
-* 3\. **API keys** for project
+* 2\. **API keys** for project
   * Configured on **Source REDCap** server
   * Configured on **Destination REDCap** server 
         
@@ -53,7 +49,7 @@ In **config.yml**, enter the following:
       url: https://redcap.destination.url/api/
       token: api_token_string 
       
-Replace above values with appropriate values for your REDCap URls and tokens.          
+Replace above values with appropriate values for your REDCap URLs and tokens.          
     
 **_Note that YAML format is white-space sensitive._**  
 
@@ -77,7 +73,7 @@ Thus, your **Full Data Export** will exist here:
     
 ## Installing RVM & Ruby 
 
-If you already have an RVM and Ruby environment established, you can safely skip this step.
+If you already have an RVM and Ruby environment established, you can safely skip this step.  However, I still recommend that you create a Gemset to manage your gem dependencies.
 
 RVM is a command-line tool that allows you to easily manage several versions of Ruby and Gemsets.
 
