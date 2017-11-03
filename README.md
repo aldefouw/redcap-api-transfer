@@ -69,7 +69,7 @@ Then, put the file in the following folder of your local repository:
     
 Thus, your **Full Data Export** will exist here:
 
-    /##your_repository_location##/export_data/data.csv
+    ##your_repository_location##/export_data/data.csv
     
 ## Installing RVM & Ruby 
 
@@ -176,3 +176,29 @@ To adjust the number of simlutaneous processes, simply change the value on "proc
 For instance, if you wanted 6 processes instead of 8:
 
     @transfer = TransferRecords.new(processes: 6)
+
+## Troubleshooting
+
+If you encounter problems with your data transfer, logs can be very useful to troubleshoot issues.  
+
+**Error messages** are written to the following location:
+
+     ##your_repository_location##/logs/errors.log
+     
+**Requests with Response Code 200** are written to the following location:
+
+     ##your_repository_location##/logs/info.log
+     
+There are some instances (particularly with file uploads) where REDCap returns an error but returns **Response Code 200**.  
+
+In these cases, I try to catch the Error and write to **errors.log** as well.  
+
+But there may be instances that are not properly caught.  So if you're not seeing the data you're expecting, give **info.log** a look.
+
+#### Longitudinal Studies
+
+For a longitudinal study, if you receive errors that indicate data cannot be written to a particular instrument, you may need to fix data on the **Source REDCap** before you can import data correctly on **Destination REDCap**.
+
+**Example Error:**
+
+      {"error":""record”,”field_name”,”1”,”This field (‘field_name’) exists on an instrument that is not designated for the event named ‘Event (Arm Number)'. You are not allowed to import data for this field into this event."}
