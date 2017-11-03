@@ -5,5 +5,5 @@ data.csv
 logs/*
 errors/*
 
-all_files.rb
-single_file.rb
+all_records.rb
+single_record.rb
