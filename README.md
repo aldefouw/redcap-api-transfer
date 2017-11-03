@@ -57,7 +57,23 @@ Replace above values with appropriate values for your REDCap URls and tokens.
     
 **_Note that YAML format is white-space sensitive._**  
 
-You will need proper indentations for the scripts to work.    
+You will need proper indentations for the scripts to work.  
+
+## Export Data from Source
+
+Download a **Full Data Export** of the project's data from the **Source REDCap**.
+
+Rename the **Full Data Export** to the following:
+     
+    data.csv
+
+Then, put the file in the following folder of your local repository:
+
+    /export_data/
+    
+Thus, your **Full Data Export** will exist here:
+
+    /##your_repository_location##/export_data/data.csv
     
 ## Installing RVM & Ruby 
 
