@@ -30,7 +30,7 @@ There are some things that you will need in both environments in order for this 
         * Identical **Instrument Designations** on both servers
     
 
-* 2\. **API keys** for project
+* 2\. **API tokens** for project
   * Configured on **Source REDCap** server
   * Configured on **Destination REDCap** server 
         
