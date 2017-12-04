@@ -169,7 +169,7 @@ To run the file, at the command prompt, type the following and hit enter:
 
 The library uses [Parallel](https://github.com/grosser/parallel) gem to manage parallel processing of the data.  
 
-Increasing the number of simultaneous processes can immenensely speed up the export / import process.
+Increasing the number of simultaneous processes can immensely speed up the export / import process.
 
 To adjust the number of simlutaneous processes, simply change the value on "processes" attribute.
 
