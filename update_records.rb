@@ -83,5 +83,7 @@ report_ids = [1372,
               1442,
               1454]
 
-@update = UpdateRecords.new(processes: 1)
-report_ids.each { |r| @update.update_records(r) }
+@update = UpdateRecords.new(processes: 8, report_ids: report_ids)
+@update.run
+
+#report_ids.each { |r| @update.update_records(r) }

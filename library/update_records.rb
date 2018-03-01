@@ -23,6 +23,8 @@ class UpdateRecords
   def initialize(**options)
     @processes = options[:processes] || 8
 
+    @report_ids = options[:report_ids]
+
     @base_dir = Dir.getwd
     options = options.merge(base_dir: @base_dir)
 
@@ -35,9 +37,9 @@ class UpdateRecords
     @reporting = Reporting.new(options)
   end
 
-  # def run
-  #   Parallel.map(sliced_ids, in_processes: @processes){ |chunk| chunk.each { |id| update_records(id) } }
-  # end
+  def run
+    Parallel.map(sliced_ids, in_processes: @processes){ |chunk| chunk.each { |id| update_records(id) } }
+  end
 
   def update_records(report)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(report))) do |curl|
@@ -110,17 +112,17 @@ class UpdateRecords
         if !status.nil? && (status == "1" || status == "2")
 
           if type == "adcid" #Set the ADCID to 37 for all where it is null
-            puts update_record(id, current_field, "37", event_name)
+            update_record(id, current_field, "37", event_name)
           elsif type == "formver" && !version_3_1_forms.include?(form) #Set the Form Version to 3 for all except IVP B5, FVP B5, and TVP B5
-            puts update_record(id, current_field, "3", event_name)
+            update_record(id, current_field, "3", event_name)
           elsif type == "formver" && version_3_1_forms.include?(form) #Set the Form Version to 3.1 for IVP B5, FVP B5, TVP B5
-            puts update_record(id, current_field, "3.1", event_name)
+            update_record(id, current_field, "3.1", event_name)
           end
 
         elsif !status.nil? && status == "0"
-          puts "#{id} | #{event_name} | Status is 'Incomplete.'  This record should not be updated.".red
+          @reporting.info_output "#{id} | #{event_name} | Status is 'Incomplete.'  This record should not be updated.".red
         else
-          puts "#{id} | #{event_name} | No status.  This record should not be updated.".red
+          @reporting.info_output "#{id} | #{event_name} | No status.  This record should not be updated.".red
         end
       end
     end
@@ -130,7 +132,7 @@ class UpdateRecords
     record = { :record => id, :ptid => id, :redcap_event_name => event_name, field_name: field, value: value }
     data = [record].to_json
 
-    puts "#{id} | #{event_name} | Set #{field} to #{value}.".green
+    @reporting.info_output "#{id} | #{event_name} | Set #{field} to #{value}."
 
     ch = Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(data))) do |curl|
       curl.on_success { |r| write_success?(r) ? write_record_success(id, r) : write_record_failure(id, r) }
@@ -200,19 +202,7 @@ Content-Type: application/octet-stream
   end
 
   def unique_record_ids
-    @export_data.data_cols.map { |r| record_id(r) }.uniq
-  end
-
-  def record_id(row)
-    row.first[1]
-  end
-
-  def event_fields(event)
-    event[1][:fields]
-  end
-
-  def event_name(event)
-    event[0]
+    @report_ids
   end
 
   def map_data_to_post_fields(data)
