@@ -83,6 +83,10 @@ class UpdateRecords
     }
   end
 
+  def version_3_1_forms
+    ['ivp_b5', 'fvp_b5', 'tvp_b5']
+  end
+
   def write_record_to_destination(id, response)
     if response.nil?
 
@@ -136,7 +140,7 @@ class UpdateRecords
 
     ch = Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(data))) do |curl|
       curl.on_success { |r| write_success?(r) ? write_record_success(id, r) : write_record_failure(id, r) }
-      curl_conditions(curl, id, 'destination')
+      curl_conditions(curl, "#{event_name} | #{id} | #{field} : #{value}", 'destination')
     end
 
     ch.body_str
@@ -147,7 +151,7 @@ class UpdateRecords
   end
 
   def write_record_success(id, r)
-    @reporting.info_output "Successfully created #{id} on destination."
+    @reporting.info_output "Successfully updated #{id} on destination."
   end
 
   def write_record_failure(id, r)
