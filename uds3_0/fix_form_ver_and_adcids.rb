@@ -36,11 +36,15 @@ class Update
         :returnFormat => 'json'
     }
 
-    ch = Curl::Easy.http_post @config.source_url, data.collect{|k, v| Curl::PostField.content(k.to_s, v)}
+    ch = Curl::Easy.http_post @config.source_url, data.collect{|k, v| Curl::PostField.content(k.to_s, v)} do |curl|
+      curl_conditions(curl, report, 'fetch')
+    end
     ch.body_str
   end
 
   def update_record(id, field, value, event_name)
+    puts "#{id} | #{event_name} | Set #{field} to #{value}.".green
+
     record = { :record => id, :ptid => id, :redcap_event_name => event_name, field_name: field, value: value }
     data = [record].to_json
 
@@ -52,8 +56,17 @@ class Update
         :data => data,
     }
 
-    ch = Curl::Easy.http_post @config.source_url, fields.collect{|k, v| Curl::PostField.content(k.to_s, v)}
+    ch = Curl::Easy.http_post @config.source_url, fields.collect{|k, v| Curl::PostField.content(k.to_s, v)} do |curl|
+      curl_conditions(curl, id, 'update')
+    end
     ch.body_str
+  end
+
+  def curl_conditions(curl, id, location)
+    curl.on_redirect { |r| puts "Redirected for #{id} on #{location}. Possible reason: #{r.body}" }
+    curl.on_missing { |r| puts "Missing for #{id} on #{location}. Possible reason: #{r.body}" }
+    curl.on_failure { |r| puts "Failure for #{id} on #{location}. Possible reason: #{r.body}" }
+    curl.on_complete { puts "Completed request for #{id} on #{location}." }
   end
 
 end
@@ -165,46 +178,30 @@ report_ids.compact.each do |report|
     end
 
     puts "==== Form #{form} | Field: #{current_field} ============================"
-    
+
     in_json.each do |r|
       ar = r.to_a
       id = r['ptid']
       event_name = r['redcap_event_name']
-      form_ver = ar[2][1] || ""
-      status = ar[3][1] || ""
+      !ar[2].nil? ? form_ver = ar[2][1]  : form_ver = ''
+      !ar[3].nil? ? status = ar[3][1] : status = ''
       type = current_field.split("_").last
 
       if !status.nil? && (status == "1" || status == "2")
 
-        #Set the ADCID to 37 for all where it is null
-        if type == "adcid"
-
-          puts "#{id} | #{event_name} | Set adcid to 37.".green
+        if type == "adcid" #Set the ADCID to 37 for all where it is null
           puts @update.update_record(id, current_field, "37", event_name)
-
-        #Set the Form Version to 3 for all except IVP B5, FVP B5, and TVP B5
-        elsif type == "formver" && !version_3_1_forms.include?(form)
-
-          puts "#{id} | #{event_name} | Set formver to 3.".green
+        elsif type == "formver" && !version_3_1_forms.include?(form) #Set the Form Version to 3 for all except IVP B5, FVP B5, and TVP B5
           puts @update.update_record(id, current_field, "3", event_name)
-
-        #Set the Form Version to 3.1 for IVP B5, FVP B5, TVP B5
-        elsif type == "formver" && version_3_1_forms.include?(form)
-
-          puts "#{id} | #{event_name} | Set formver to 3.1.".green
+        elsif type == "formver" && version_3_1_forms.include?(form) #Set the Form Version to 3.1 for IVP B5, FVP B5, TVP B5
           puts  @update.update_record(id, current_field, "3.1", event_name)
-
         end
 
+      elsif !status.nil? && status == "0"
+        puts "#{id} | #{event_name} | Status is 'Incomplete.'  This record should not be updated.".red
       else
-
-        puts "#{id} - does not contain a status.  Record has not been touched so will not be updated.".red
-
+        puts "#{id} | #{event_name} | No status.  This record should not be updated.".red
       end
-
     end
-
   end
-
 end
-
