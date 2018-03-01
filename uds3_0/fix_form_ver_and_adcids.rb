@@ -24,16 +24,34 @@ class Update
     @config = options[:config]
   end
 
+  def fetch_records(report)
+    data = {
+        :token => @config.source_token,
+        :content => 'report',
+        :format => 'json',
+        :report_id => report,
+        :rawOrLabel => 'raw',
+        :rawOrLabelHeaders => 'raw',
+        :exportCheckboxLabel => 'false',
+        :returnFormat => 'json'
+    }
+
+    ch = Curl::Easy.http_post @config.source_url, data.collect{|k, v| Curl::PostField.content(k.to_s, v)}
+    ch.body_str
+  end
+
   def update_record(id, field, value, event_name)
-    record = { :ptid => id, field.to_sym => value, :redcap_event_name => event_name }
+    record = { :record => id, :ptid => id, :redcap_event_name => event_name, field_name: field, value: value }
     data = [record].to_json
+
     fields = {
         :token => @config.destination_token,
         :content => 'record',
         :format => 'json',
-        :type => 'flat',
+        :type => 'eav',
         :data => data,
     }
+
     ch = Curl::Easy.http_post @config.source_url, fields.collect{|k, v| Curl::PostField.content(k.to_s, v)}
     ch.body_str
   end
@@ -129,19 +147,7 @@ version_3_1_forms = ['ivp_b5', 'fvp_b5', 'tvp_b5']
 
 report_ids.compact.each do |report|
 
-  data = {
-      :token => @config.source_token,
-      :content => 'report',
-      :format => 'json',
-      :report_id => report,
-      :rawOrLabel => 'raw',
-      :rawOrLabelHeaders => 'raw',
-      :exportCheckboxLabel => 'false',
-      :returnFormat => 'json'
-  }
-
-  ch = Curl::Easy.http_post @config.source_url, data.collect{|k, v| Curl::PostField.content(k.to_s, v)}
-  response = ch.body_str
+  response = @update.fetch_records(report)
 
   if response.nil?
 
@@ -164,8 +170,8 @@ report_ids.compact.each do |report|
       ar = r.to_a
       id = r['ptid']
       event_name = r['redcap_event_name']
-      form_ver = ar[2][1]
-      status = ar[3][1]
+      form_ver = ar[2][1] || ""
+      status = ar[3][1] || ""
       type = current_field.split("_").last
 
       if !status.nil? && (status == "0" || status == "1" || status == "2")
@@ -191,7 +197,7 @@ report_ids.compact.each do |report|
         end
 
       else
-        
+
         puts "#{id} - does not contain a status.  Record has not been touched so will not be updated.".red
 
       end
