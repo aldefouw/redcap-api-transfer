@@ -157,15 +157,15 @@ report_ids.compact.each do |report|
 
     in_json = JSON.parse(response)
 
-    if in_json[1].to_a[2].nil?
+    if in_json[0].to_a[2].nil?
       puts "No key exists"
     else
-      current_field = in_json[1].to_a[2][0]
-      form = in_json[1].to_a[3][0].split("_complete")[0]
+      current_field = in_json[0].to_a[2][0]
+      form = in_json[0].to_a[3][0].split("_complete")[0]
     end
 
     puts "==== Form #{form} | Field: #{current_field} ============================"
-
+    
     in_json.each do |r|
       ar = r.to_a
       id = r['ptid']
@@ -174,7 +174,7 @@ report_ids.compact.each do |report|
       status = ar[3][1] || ""
       type = current_field.split("_").last
 
-      if !status.nil? && (status == "0" || status == "1" || status == "2")
+      if !status.nil? && (status == "1" || status == "2")
 
         #Set the ADCID to 37 for all where it is null
         if type == "adcid"
