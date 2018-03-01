@@ -132,10 +132,12 @@ class UpdateRecords
 
     puts "#{id} | #{event_name} | Set #{field} to #{value}.".green
 
-    Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(data))) do |curl|
+    ch = Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(data))) do |curl|
       curl.on_success { |r| write_success?(r) ? write_record_success(id, r) : write_record_failure(id, r) }
       curl_conditions(curl, id, 'destination')
     end
+
+    ch.body_str
   end
 
   def write_success?(r)
