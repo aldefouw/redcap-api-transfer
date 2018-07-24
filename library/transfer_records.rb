@@ -230,7 +230,7 @@ EOF
   end
 
   def map_data_to_post_fields(data)
-    data.map{|k, v| Curl::PostField.content(k.to_s, v)}
+    data.map{|k, v| Curl::PostField.content(k.to_s, v) unless v.nil? }
   end
 
   def original_file_name(response)
