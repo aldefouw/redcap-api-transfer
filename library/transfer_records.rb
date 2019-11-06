@@ -198,7 +198,13 @@ EOF
   end
 
   def write_file_to_local_disk(r, curl)
+    create_downloads_folder
     File.open(full_file_path(r), 'wb') { |f| f << curl.body }
+  end
+
+  def create_downloads_folder
+    Dir.chdir(@base_dir)
+    Dir.mkdir("downloaded_files") unless Dir.exist?("downloaded_files")
   end
 
   def sliced_ids
