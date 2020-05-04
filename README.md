@@ -57,7 +57,7 @@ You will need proper indentations for the scripts to work.
 
 ## Export Data from Source
 
-NOTE: There is no longer a need to manually download a full data export from source.  This is done automatically via API now.
+**UPDATE: You no longer need to manually download a full data export from the source REDCap project.  This is done automatically via API now and handled seamlessly in the background.**
 
 ~~Download a **Full Data Export** of the project's data from the **Source REDCap**.~~
 
