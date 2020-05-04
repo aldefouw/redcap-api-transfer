@@ -26,10 +26,16 @@ class TransferRecords
     @base_dir = Dir.getwd
     options = options.merge(base_dir: @base_dir)
 
+    @data_template = "#{@base_dir}/export_data/template.tmp"
+    options = options.merge(data_template: @data_template)
+
     puts 'Loading Configuration ... '
     @config = Config.new(options)
 
     options = options.merge(config: @config)
+
+    puts 'Downloading Project Template ... '
+    download_data_template
 
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
@@ -40,6 +46,9 @@ class TransferRecords
 
   def run
     Parallel.map(sliced_ids, in_processes: @processes){ |chunk| chunk.each { |id| transfer_record_to_destination(id) } }
+
+    puts 'Deleting Project Template ... '
+    delete_data_template
   end
 
   def transfer_record_to_destination(id)
@@ -257,6 +266,33 @@ EOF
 
   def all_event_fields(event, id)
     event_fields(event).each { |field| export_file_from_source(id, field, event) }
+  end
+
+  def all_data_from_source
+    {
+        :token => @config.source_token,
+        :content => 'report',
+        :report_id => 'ALL',
+        :format => 'csv',
+        :rawOrLabel => 'raw',
+        :rawOrLabelHeaders => 'raw',
+        :exportCheckboxLabel => 'true',
+        :exportSurveyFields => 'true',
+        :exportDataAccessGroups => 'false',
+        :returnFormat => 'json'
+    }
+  end
+
+  def download_data_template
+    Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(all_data_from_source)) do |curl|
+      curl.on_success do |r|
+        File.open(@data_template, 'wb') { |f| f << r.body }
+      end
+    end
+  end
+
+  def delete_data_template
+    File.delete(@data_template)
   end
 
 end

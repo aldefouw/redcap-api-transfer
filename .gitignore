@@ -7,3 +7,5 @@ errors/*
 
 all_records.rb
 single_record.rb
+
+*.tmp

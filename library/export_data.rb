@@ -7,19 +7,16 @@ class ExportData
     @config = options[:config]
     @path = "export_data"
     @base_dir = options[:base_dir]
+    @data_template = options[:data_template]
     @data_cols = data_cols
     files
   end
 
-  def data_file
-    "#{@base_dir}/#{@path}/data.csv"
-  end
-
   def data_cols
-    if File.exist? data_file
-      CSV.read data_file, :headers => true
+    if File.exist? @data_template
+      CSV.read @data_template, :headers => true
     else
-      throw "You need to add a data export file (data.csv) for project to #{data_file}."
+      throw "Unable to find a data template file for the project #{@data_template}."
     end
   end
 
