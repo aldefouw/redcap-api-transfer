@@ -1,11 +1,12 @@
 downloaded_files/*
 *.idea
-config/*
+config/*.yml
 data.csv
 logs/*
+log/*
 errors/*
 
-all_records.rb
-single_record.rb
 
 *.tmp
+
+.ruby-gemset

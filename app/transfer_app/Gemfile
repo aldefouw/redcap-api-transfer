@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+ruby "2.6.5"
+
+gem 'colorize', "~> 0.8"
+gem 'mechanize', "~> 2.7"
+gem 'parallel', "~> 1.12"
+gem 'curb', "~> 0.9"
+
+group :development do
+  gem 'pry', "~> 0.11"
+end

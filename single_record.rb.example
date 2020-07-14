@@ -1,4 +1,0 @@
-require "#{Dir.getwd}/library/transfer_records"
-
-@transfer = TransferRecords.new(processes: 1)
-@transfer.transfer_record_to_destination("1")
