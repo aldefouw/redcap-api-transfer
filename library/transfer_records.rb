@@ -53,6 +53,7 @@ class TransferRecords
 
   def transfer_record_to_destination(id)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(source_fields(id))) do |curl|
+      curl.ssl_verify_peer = false
       curl.on_success do |r|
         transfer_destination_success(id)
         write_record_to_destination(id, r)
@@ -122,6 +123,7 @@ class TransferRecords
 
   def export_file_from_source(id, field, event)
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(file_fields(id, field, event))) do |curl|
+      curl.ssl_verify_peer = false
       curl.on_success do |r|
         export_file_success_message(id, r, event)
         write_file_to_local_disk(r, curl)
@@ -137,6 +139,7 @@ class TransferRecords
 
   def write_record_to_destination(id, response)
     Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(destination_fields(response.body_str))) do |curl|
+      curl.ssl_verify_peer = false
       curl.on_success { |r| write_success?(r) ? write_record_success(id, r) : write_record_failure(id, r) }
       curl_conditions(curl, id, 'destination')
     end
@@ -285,10 +288,19 @@ EOF
 
   def download_data_template
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(all_data_from_source)) do |curl|
+      curl.ssl_verify_peer = false
       curl.on_success do |r|
         File.open(@data_template, 'wb') { |f| f << r.body }
       end
+      curl_data_template_conditions(curl)
     end
+  end
+
+  def curl_data_template_conditions(curl)
+    curl.on_redirect { |r| @reporting.error_output "Redirected when attempting to download data template. Possible reason: #{r.body}" }
+    curl.on_missing { |r| @reporting.error_output "Missing when attempting to download data template. Possible reason: #{r.body}" }
+    curl.on_failure { |r| @reporting.error_output "Failure when attempting to download data template. Possible reason: #{r.body}" }
+    curl.on_complete { @reporting.info_output "Completed data template download." }
   end
 
   def delete_data_template

@@ -18,7 +18,7 @@ GEM
     coderay (1.1.2)
     colorize (0.8.1)
     concurrent-ruby (1.0.5)
-    curb (0.9.10)
+    curb (0.9.9)
     domain_name (0.5.20170404)
       unf (>= 0.0.5, < 1.0.0)
     ffi (1.11.1)
@@ -71,17 +71,17 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  activerecord (~> 5.1)
-  activesupport (~> 5.1)
-  colorize (~> 0.8)
-  curb (= 0.9.10)
-  highline (~> 1.7)
-  mechanize (~> 2.7)
-  mysql2 (~> 0.4)
-  parallel (~> 1.12)
-  pry (~> 0.11)
-  ruby-progressbar (~> 1.9)
-  watir (~> 6.8)
+  activerecord
+  activesupport
+  colorize
+  curb (= 0.9.9)
+  highline
+  mechanize
+  mysql2
+  parallel
+  pry
+  ruby-progressbar
+  watir (~> 6.4)
 
 RUBY VERSION
    ruby 2.6.5p114
