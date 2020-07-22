@@ -1,4 +1,6 @@
 #!/bin/sh
+#Pull the repo
+git pull
 
 #Get the latest tag
 latest_tag=$(git tag | tail -1)
@@ -22,9 +24,6 @@ fi
 echo ====================================
 echo Deployment Tag: $selected_tag.
 echo ====================================
-
-#Pull the repo
-git pull
 
 #Checkout the repo by tagged release
 git checkout tags/$selected_tag
