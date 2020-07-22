@@ -13,6 +13,8 @@ class Config
   attr_reader :verbose
   attr_reader :processes
 
+  attr_reader :project_name
+
   def initialize(**options)
     @base_dir = options.has_key?(:base_dir) ? options[:base_dir] : Dir.getwd
     @config_file = "#{@base_dir}/config/config.yml"

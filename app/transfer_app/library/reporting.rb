@@ -4,14 +4,15 @@ class Reporting
     @base_dir = options[:base_dir]
     @error_log = Logger.new(errors_log_path)
     @info_log = Logger.new(info_log_path)
+    @project_name = options[:config].project_name
   end
 
   def errors_log_path
-    "#{@base_dir}/logs/errors.log"
+    "#{@base_dir}/logs/#{@project_name}/errors.log"
   end
 
   def info_log_path
-    "#{@base_dir}/logs/info.log"
+    "#{@base_dir}/logs/#{@project_name}/info.log"
   end
 
   def info_output(text)
