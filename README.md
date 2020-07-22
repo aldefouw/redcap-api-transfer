@@ -55,8 +55,8 @@ In **config.yml**, enter the following:
           url: https://redcap.destination.url/api/
           token: DESTINATION_TOKEN_HERE
 
-    processes: 1 # Takes precedence over the processes listed in settings
-    verbose: false  # Takes precedence over the verbose flag listed in settings
+        processes: 1 # Takes precedence over the processes listed in settings
+        verbose: false  # Takes precedence over the verbose flag listed in settings
       
 Replace above values with appropriate values for your REDCap URLs and tokens.          
     
