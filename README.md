@@ -57,19 +57,23 @@ You will need proper indentations for the scripts to work.
 
 ## Export Data from Source
 
-Download a **Full Data Export** of the project's data from the **Source REDCap**.
+**UPDATE: You no longer need to manually download a full data export from the source REDCap project.  This is done automatically via API now and handled seamlessly in the background.**
 
-Rename the **Full Data Export** to the following:
+~~Download a **Full Data Export** of the project's data from the **Source REDCap**.~~
+
+~~Rename the **Full Data Export** to the following:~~
      
     data.csv
 
-Then, put the file in the following folder of your local repository:
+~~Then, put the file in the following folder of your local repository:~~
 
     /export_data/
     
-Thus, your **Full Data Export** will exist here:
+~~Thus, your **Full Data Export** will exist here:~~
 
     ##your_repository_location##/export_data/data.csv
+    
+    
     
 ## Installing RVM & Ruby 
 
