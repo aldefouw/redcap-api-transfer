@@ -30,4 +30,4 @@ git pull
 git checkout tags/$selected_tag
 
 #Rebuild the image if needed based upon the docker-compose.yml file
-docker-compose build
+docker-compose build redcap-api-transfer_app
