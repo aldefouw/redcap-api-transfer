@@ -14,7 +14,7 @@ class ExportData
 
   def data_cols
     if File.exist? @data_template
-      CSV.read @data_template, :headers => true
+      CSV.read @data_template, :headers => true, encoding: Encoding::ISO_8859_1
     else
       throw "Unable to find a data template file for the project #{@data_template}."
     end
