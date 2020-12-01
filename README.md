@@ -92,6 +92,12 @@ To install Docker on your machine, please reference the following guide at Docke
 
 https://docs.docker.com/get-docker/
 
+## Run the Deployment Scripts to Check for Newest Version
+
+    $ sh deploy.sh
+    
+If you run the deploy script, it will automatically select the newest version of this script from the repository.  From there, an updated version of the build is generated using docker-compose functionality.  
+
     
 ## Transfer Single Record
 
