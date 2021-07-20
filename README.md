@@ -1,5 +1,7 @@
 # REDCap API Transfer Tool
 
+This project is aimed at people who want to transfer a REDCap project from REDCap Server A to REDCap Server B.
+
 This project contains libraries encapsulated by a Docker image that aim to make transferring a REDCap project from one server to another as simple as running a single script from command line.
 
 Instructions in this document are written for a Unix-style environment, but the scripts will likely work in a Windows environment as well (with some appropriate modifications).
@@ -7,6 +9,21 @@ Instructions in this document are written for a Unix-style environment, but the 
 The scripts work by directly connecting to the **source REDCap's API** and pushing that data into the **destination REDCap** via API.
 
 **Please note that this library will transfer both REDCap data and files.**
+
+## Technical Prerequisites
+
+- Docker must be installed on the machine the script is run on.  
+
+Installation instructions vary based upon the OS being run:
+   - [Install Docker on Windows](https://docs.docker.com/docker-for-windows/install/)
+   - [Install Docker on a Mac](https://docs.docker.com/docker-for-mac/install/)
+   - Install Docker on Linux
+      - [CentOS](https://docs.docker.com/engine/install/centos/)
+      - [Debian](https://docs.docker.com/engine/install/debian/)
+      - [Fedora](https://docs.docker.com/engine/install/fedora/)
+      - [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+
+- Machine the script is run on MUST be able to communicate with REDCap Server A and REDCap Server B
 
 ## Disclaimer
 
@@ -74,6 +91,12 @@ Although it's outside the scope of this README, this library is dependent upon y
 To install Docker on your machine, please reference the following guide at Docker's website:
 
 https://docs.docker.com/get-docker/
+
+## Run the Deployment Scripts to Check for Newest Version
+
+    $ sh deploy.sh
+    
+If you run the deploy script, it will automatically select the newest version of this script from the repository.  From there, an updated version of the build is generated using docker-compose functionality.  
 
     
 ## Transfer Single Record
