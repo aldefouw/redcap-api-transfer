@@ -23,12 +23,18 @@ class TransferRecords
     @data_template = "#{@base_dir}/export_data/template-#{Time.now.to_i}.tmp"
     options = options.merge(data_template: @data_template)
 
+    @data_dictionary = "#{@base_dir}/export_data/dictionary-#{Time.now.to_i}.tmp"
+    options = options.merge(data_dictionary: @data_dictionary)
+
     puts 'Loading Configuration ... '
     @config = Config.new(options)
     options = options.merge(config: @config)
 
     puts 'Downloading Project Template ... '
     download_data_template
+
+    puts 'Downloading Data Dictionary ... '
+    download_data_dictionary
 
     puts 'Loading Export Data ... '
     @export_data = ExportData.new(options)
@@ -57,6 +63,16 @@ class TransferRecords
 
   def transfer_destination_success(id)
     @reporting.info_output "Successfully fetched #{id} from source."
+  end
+
+  def data_dictionary_request
+    {
+      :token  =>  @config.source_token,
+      :content => 'metadata',
+      :format  => 'csv',
+      :returnFormat => 'csv',
+      :forms => ''
+    }
   end
 
   def destination_fields(source_data)
@@ -288,15 +304,25 @@ Content-Type: application/octet-stream
       curl.on_success do |r|
         File.open(@data_template, 'wb') { |f| f << r.body }
       end
+      curl_data_template_conditions(curl, 'data dictionary')
+    end
+  end
+
+  def download_data_dictionary
+    Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(data_dictionary_request)) do |curl|
+      curl.verbose = @config.verbose
+      curl.on_success do |r|
+        File.open(@data_dictionary, 'wb') { |f| f << r.body }
+      end
       curl_data_template_conditions(curl)
     end
   end
 
-  def curl_data_template_conditions(curl)
-    curl.on_redirect { |r| @reporting.error_output "Redirected when attempting to download data template. Possible reason: #{r.body}" }
-    curl.on_missing { |r| @reporting.error_output "Missing when attempting to download data template. Possible reason: #{r.body}" }
+  def curl_data_template_conditions(curl, kind = 'data template')
+    curl.on_redirect { |r| @reporting.error_output "Redirected when attempting to download #{kind}. Possible reason: #{r.body}" }
+    curl.on_missing { |r| @reporting.error_output "Missing when attempting to download #{kind}. Possible reason: #{r.body}" }
     curl.on_failure do |r, err|
-      @reporting.error_output "Failure when attempting to download data template. Possible reason: #{r.body}"
+      @reporting.error_output "Failure when attempting to download #{kind}. Possible reason: #{r.body}"
       @reporting.error_output "Error: #{err.inspect}"
     end
     curl.on_complete do

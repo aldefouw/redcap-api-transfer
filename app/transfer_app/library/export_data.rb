@@ -7,22 +7,42 @@ class ExportData
     @config = options[:config]
     @path = "export_data"
     @base_dir = options[:base_dir]
-    @data_template = options[:data_template]
+    @data_template_path = options[:data_template]
+    @dictionary_path = options[:data_dictionary]
     @data_cols = data_cols
-    files
+    @data_dictionary = data_dictionary
+    @file_cols = []
+    find_file_fields
+    add_files
   end
 
-  def data_cols
-    if File.exist? @data_template
-      CSV.read @data_template, :headers => true, encoding: Encoding::ISO_8859_1
+  def data_dictionary
+    if File.exist? @dictionary_path
+      CSV.read @dictionary_path, :headers => true, encoding: Encoding::ISO_8859_1
     else
-      throw "Unable to find a data template file for the project #{@data_template}."
+      throw "Unable to find a data dictionary file for the project #{@dictionary_path}."
     end
   end
 
-  def files
+  def data_cols
+    if File.exist? @data_template_path
+      CSV.read @data_template_path, :headers => true, encoding: Encoding::ISO_8859_1
+    else
+      throw "Unable to find a data template file for the project #{@data_template_path}."
+    end
+  end
+
+  def find_file_fields
+    @data_dictionary.by_row.each { |r| @file_cols << r['field_name'] if r['field_type'] == 'file' }
+  end
+
+  def add_files
     @uploaded_files = {}
-    @data_cols.each { |row| row.each { |col| add_field_to_hash(row, col) if doc_exists?(col) } }
+    @data_cols.each do |row|
+      row.each do |col|
+        add_field_to_hash(row, col) if file_column?(col) && doc_exists?(col)
+      end
+    end
   end
 
   def add_field_to_hash(row, col)
@@ -44,8 +64,12 @@ class ExportData
     col[0]
   end
 
+  def file_column?(col)
+    @file_cols.include?(col[0])
+  end
+
   def doc_exists?(col)
-    col[1] == "[document]"
+    !col[1].nil?
   end
 
   def add_record_key(row)
