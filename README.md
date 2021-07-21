@@ -33,7 +33,7 @@ Installation instructions vary based upon the OS being run:
 
 **Testing in development environment prior to running against production is highly recommended.**
 
-## Pre-requisites
+## Prerequisites
 
 There are some things that you will need in both environments in order for this script to work.
 
