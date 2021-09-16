@@ -176,12 +176,13 @@ class TransferRecords
   def upload_request(boundary, id, field, event_name, file)
     uri = URI.parse(@config.destination_url)
 
-    Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == "https") do |http|
-      req = Net::HTTP::Post.new(uri.request_uri)
-      req.body = body(boundary, id, field, event_name, file)
-      req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
-      http.request req
-    end
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true if @config.destination_url.include?('https://')
+    http.set_debug_output($stdout) if @config.verbose
+    req = Net::HTTP::Post.new(uri.request_uri)
+    req.body = body(boundary, id, field, event_name, file)
+    req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+    http.request req
   end
 
   def body(boundary, id, field, event_name, file)
