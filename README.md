@@ -48,8 +48,8 @@ There are some things that you will need in both environments in order for this 
     
 
 * 2\. **API tokens** for project
-  * Configured on **Source REDCap** server
-  * Configured on **Destination REDCap** server 
+  * Token with __Export Rights__ configured on **Source REDCap** server
+  * Token with __Import Rights__ configured on **Destination REDCap** server 
         
 
 ## Configuration
@@ -126,6 +126,8 @@ By default this option is set to false.  If you wish to enable it, set the follo
       project_name_here:
         ..
         transfer_new_records_only: true
+
+___Note:___ You MUST have __API Export Rights__ configured for the API Token on the Destination in order for this to work!
 
 ## Run parallel processes
 
