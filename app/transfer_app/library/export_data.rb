@@ -1,6 +1,7 @@
 class ExportData
 
   attr_reader :data_cols
+  attr_reader :dest_data_cols
   attr_reader :uploaded_files
 
   def initialize(**options)
@@ -8,8 +9,10 @@ class ExportData
     @path = "export_data"
     @base_dir = options[:base_dir]
     @data_template_path = options[:data_template]
+    @data_dest_template_path = options[:data_dest_template]
     @dictionary_path = options[:data_dictionary]
     @data_cols = data_cols
+    @dest_data_cols = dest_data_cols
     @data_dictionary = data_dictionary
     @file_cols = []
     find_file_fields
@@ -25,10 +28,26 @@ class ExportData
   end
 
   def data_cols
+    fetch_data_template
+  end
+
+  def fetch_data_template
     if File.exist? @data_template_path
       CSV.read @data_template_path, :headers => true, encoding: Encoding::ISO_8859_1
     else
       throw "Unable to find a data template file for the project #{@data_template_path}."
+    end
+  end
+
+  def dest_data_cols
+    fetch_dest_data_template
+  end
+
+  def fetch_dest_data_template
+    if File.exist? @data_dest_template_path
+      CSV.read @data_dest_template_path, :headers => true, encoding: Encoding::ISO_8859_1
+    else
+      throw "Unable to find a destination data template file for the project #{@data_dest_template_path}."
     end
   end
 

@@ -15,6 +15,8 @@ class Config
 
   attr_reader :project_name
 
+  attr_reader :new_records_only
+
   def initialize(**options)
     @base_dir = options.has_key?(:base_dir) ? options[:base_dir] : Dir.getwd
     @config_file = "#{@base_dir}/config/config.yml"
@@ -43,6 +45,10 @@ class Config
 
         @processes = @projects[@project_name]['processes']
         @verbose = @projects[@project_name]['verbose']
+
+        #Transfer New Records Only flag defaults to false but accepts true if set within config.yml
+        @new_records_only = false
+        @new_records_only = @projects[@project_name]['transfer_new_records_only'] if @projects[@project_name].has_key?('transfer_new_records_only')
       else
         throw "Cannot find the project name #{@project_name} in config.yml."
       end

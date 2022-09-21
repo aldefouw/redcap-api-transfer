@@ -23,6 +23,9 @@ class TransferRecords
     @data_template = "#{@base_dir}/export_data/template-#{Time.now.to_i}.tmp"
     options = options.merge(data_template: @data_template)
 
+    @data_dest_template = "#{@base_dir}/export_data/dest_template-#{Time.now.to_i}.tmp"
+    options = options.merge(data_dest_template: @data_dest_template)
+
     @data_dictionary = "#{@base_dir}/export_data/dictionary-#{Time.now.to_i}.tmp"
     options = options.merge(data_dictionary: @data_dictionary)
 
@@ -30,8 +33,11 @@ class TransferRecords
     @config = Config.new(options)
     options = options.merge(config: @config)
 
-    puts 'Downloading Project Template ... '
+    puts 'Downloading SOURCE Project Template ... '
     download_data_template
+
+    puts 'Downloading DESTINATION Project Template ... '
+    download_dest_data_template
 
     puts 'Downloading Data Dictionary ... '
     download_data_dictionary
@@ -245,7 +251,15 @@ Content-Type: application/octet-stream
   end
 
   def unique_record_ids
+    @config.new_records_only ? source_ids - dest_ids : source_ids
+  end
+
+  def source_ids
     @export_data.data_cols.map { |r| record_id(r) }.uniq
+  end
+
+  def dest_ids
+    @export_data.dest_data_cols.map { |r| record_id(r) }.uniq
   end
 
   def record_id(row)
@@ -287,8 +301,7 @@ Content-Type: application/octet-stream
   def all_data_from_source
     {
         :token => @config.source_token,
-        :content => 'report',
-        :report_id => 'ALL',
+        :content => 'record',
         :format => 'csv',
         :rawOrLabel => 'raw',
         :rawOrLabelHeaders => 'raw',
@@ -299,11 +312,35 @@ Content-Type: application/octet-stream
     }
   end
 
+  def all_data_from_destination
+    {
+      :token => @config.destination_token,
+      :content => 'record',
+      :format => 'csv',
+      :rawOrLabel => 'raw',
+      :rawOrLabelHeaders => 'raw',
+      :exportCheckboxLabel => 'true',
+      :exportSurveyFields => 'true',
+      :exportDataAccessGroups => 'false',
+      :returnFormat => 'json'
+    }
+  end
+
   def download_data_template
     Curl::Easy.http_post(@config.source_url, map_data_to_post_fields(all_data_from_source)) do |curl|
       curl.verbose = @config.verbose
       curl.on_success do |r|
         File.open(@data_template, 'wb') { |f| f << r.body }
+      end
+      curl_data_template_conditions(curl, 'data dictionary')
+    end
+  end
+
+  def download_dest_data_template
+    Curl::Easy.http_post(@config.destination_url, map_data_to_post_fields(all_data_from_destination)) do |curl|
+      curl.verbose = @config.verbose
+      curl.on_success do |r|
+        File.open(@data_dest_template, 'wb') { |f| f << r.body }
       end
       curl_data_template_conditions(curl, 'data dictionary')
     end
