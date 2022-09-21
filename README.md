@@ -72,6 +72,7 @@ In **config.yml**, enter the following:
           url: https://redcap.destination.url/api/
           token: DESTINATION_TOKEN_HERE
 
+        transfer_new_records_only: true
         processes: 1 # Takes precedence over the processes listed in settings
         verbose: false  # Takes precedence over the verbose flag listed in settings
       
@@ -114,7 +115,17 @@ Once you have verified that a single record can appropriately transfer, you can 
 To transfer entire project, issue the following command:
 
     $ sh transfer_all_records.sh your_project_name_here
+
+## Only Transfer New Records
+
+If you only want to transfer __new__ records to the destination there is an option to do so.  (This is useful for syncing two REDCap instances.)
+
+By default this option is set to false.  If you wish to enable it, set the following at the project level of config.yml:
    
+    projects:
+      project_name_here:
+        ..
+        transfer_new_records_only: true
 
 ## Run parallel processes
 
