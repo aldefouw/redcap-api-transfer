@@ -36,8 +36,12 @@ class TransferRecords
     puts 'Downloading SOURCE Project Template ... '
     download_data_template
 
-    puts 'Downloading DESTINATION Project Template ... '
-    download_dest_data_template
+    # This only runs if "transfer_new_records_only: true"
+    # *** MUST *** have export rights configured for API user on the destination side!
+    if @config.new_records_only
+      puts 'Downloading DESTINATION Project Template ... '
+      download_dest_data_template
+    end
 
     puts 'Downloading Data Dictionary ... '
     download_data_dictionary
