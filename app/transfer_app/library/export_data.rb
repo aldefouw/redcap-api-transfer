@@ -12,7 +12,7 @@ class ExportData
     @data_dest_template_path = options[:data_dest_template]
     @dictionary_path = options[:data_dictionary]
     @data_cols = data_cols
-    @dest_data_cols = dest_data_cols
+    @dest_data_cols = @config.new_records_only ? dest_data_cols : []
     @data_dictionary = data_dictionary
     @file_cols = []
     find_file_fields

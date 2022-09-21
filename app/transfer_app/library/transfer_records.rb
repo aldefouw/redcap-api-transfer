@@ -255,7 +255,20 @@ Content-Type: application/octet-stream
   end
 
   def unique_record_ids
-    @config.new_records_only ? source_ids - dest_ids : source_ids
+    @config.new_records_only ? new_records_only : all_records
+  end
+
+  def new_records_only
+    if @config.new_records_only
+      new_records = source_ids - dest_ids
+      @reporting.info_output "NEW RECORDS ONLY MODE: Detected #{new_records.count} NEW records on #{@config.source_url} that do not exist on #{@config.destination_url}."
+      new_records
+    end
+  end
+
+  def all_records
+    @reporting.info_output "ALL RECORDS MODE: Detected #{source_ids.count} records on #{@config.source_url}."
+    source_ids
   end
 
   def source_ids
@@ -263,7 +276,7 @@ Content-Type: application/octet-stream
   end
 
   def dest_ids
-    @export_data.dest_data_cols.map { |r| record_id(r) }.uniq
+    @export_data.dest_data_cols.map { |r| record_id(r) }.uniq if @config.new_records_only
   end
 
   def record_id(row)
